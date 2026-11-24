@@ -92,13 +92,15 @@ export async function handleSync(request: Request, user: User): Promise<Response
 		.all<RecordRow>();
 	const hasMore = results.length > MAX_RECORDS_PER_PULL;
 	const page = results.slice(0, MAX_RECORDS_PER_PULL);
+	// Only a shared space has authors worth showing; a solo account adds everything itself.
+	const authors = page.length ? await recordAuthors(space) : null;
 
 	return Response.json({
 		space,
 		settings: await loadSettings(space),
 		cursor: page.length ? page[page.length - 1].rev : cursor,
 		hasMore,
-		records: page.map(toChange),
+		records: page.map((row) => withAuthor(toChange(row), authors)),
 	});
 }
 
@@ -200,6 +202,44 @@ export async function applyChanges(
 	if (actorId) await notifySpaceChanged(userId, actorId, sourceSession, news).catch((e) => console.error("push", e));
 }
 
+/**
+ * Who added each record of a shared space: `collection/syncId` → email, plus `""` → the owner's
+ * email, since a record without an author row is the owner's. `null` for a space nobody shares.
+ */
+async function recordAuthors(space: string): Promise<Map<string, string> | null> {
+	const d = await db();
+	const owner = await d
+		.prepare(
+			`SELECT email FROM users
+			 WHERE id = ?1 AND EXISTS (SELECT 1 FROM household_members WHERE owner_id = ?1)`,
+		)
+		.bind(space)
+		.first<{ email: string }>();
+	if (!owner) return null;
+	const { results: rows } = await d
+		.prepare(
+			`SELECT record_authors.collection AS collection, record_authors.sync_id AS sync_id, users.email AS email
+			 FROM record_authors JOIN users ON users.id = record_authors.author_id
+			 WHERE record_authors.space = ?`,
+		)
+		.bind(space)
+		.all<{ collection: string; sync_id: string; email: string }>();
+	const authors = new Map<string, string>();
+	for (const r of rows) authors.set(`${r.collection}/${r.sync_id}`, r.email);
+	authors.set("", owner.email);
+	return authors;
+}
+
+function authorOf(authors: Map<string, string>, collection: string, syncId: string): string | undefined {
+	return authors.get(`${collection}/${syncId}`) ?? authors.get("");
+}
+
+/** [change] with `addedBy` (an email) in a shared space; old apps ignore the extra field. */
+function withAuthor(change: Change, authors: Map<string, string> | null): Change & { addedBy?: string } {
+	if (!authors || change.deleted) return change;
+	return { ...change, addedBy: authorOf(authors, change.collection, change.syncId) };
+}
+
 function toChange(row: RecordRow): Change {
 	return {
 		collection: row.collection,
@@ -218,21 +258,7 @@ export async function handleWebData(user: User): Promise<Response> {
 	const space = await spaceOf(user.id);
 	const d = await db();
 	const household = await describe(user);
-	const authors = new Map<string, string>();
-	if (household.role !== "none") {
-		const { results: rows } = await d
-			.prepare(
-				`SELECT record_authors.collection AS collection, record_authors.sync_id AS sync_id, users.email AS email
-				 FROM record_authors JOIN users ON users.id = record_authors.author_id
-				 WHERE record_authors.space = ?`,
-			)
-			.bind(space)
-			.all<{ collection: string; sync_id: string; email: string }>();
-		for (const r of rows) authors.set(`${r.collection}/${r.sync_id}`, r.email);
-		// No author row means the household's owner.
-		const owner = household.members.find((m) => m.isOwner)?.email;
-		if (owner) authors.set("", owner);
-	}
+	const authors = await recordAuthors(space);
 	const { results } = await d
 		.prepare(
 			`SELECT collection, sync_id, data, deleted, changed_at, rev FROM sync_records
@@ -247,7 +273,7 @@ export async function handleWebData(user: User): Promise<Response> {
 		mealplan: [],
 	};
 	for (const row of results) {
-		const addedBy = authors.size ? (authors.get(`${row.collection}/${row.sync_id}`) ?? authors.get("")) : undefined;
+		const addedBy = authors ? authorOf(authors, row.collection, row.sync_id) : undefined;
 		grouped[row.collection]?.push({ ...JSON.parse(row.data ?? "{}"), syncId: row.sync_id, changedAt: row.changed_at, addedBy });
 	}
 	return Response.json({ user, household, settings: await loadSettings(space), ...grouped });
