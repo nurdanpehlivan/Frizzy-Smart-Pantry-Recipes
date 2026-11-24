@@ -3,7 +3,6 @@ package com.shelfie.app.presentation.scanner.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,10 +26,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shelfie.app.core.ui.R
 import com.shelfie.app.domain.model.PantryItem
+import com.shelfie.app.presentation.common.FreshnessRing
 import com.shelfie.app.presentation.common.displayEmoji
-import com.shelfie.app.presentation.common.foodEmoji
 import com.shelfie.app.presentation.common.formatQuantity
 import com.shelfie.app.presentation.common.labelRes
+import com.shelfie.app.presentation.theme.extendedColors
+import com.shelfie.app.presentation.theme.freshnessPalette
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -47,16 +49,18 @@ fun DetectedItemCard(
     onDiscard: () -> Unit = {},
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
+    val today = remember { LocalDate.now() }
+    val status = item.freshnessStatus(today)
 
     OutlinedCard(
         onClick = onEdit,
         enabled = enabled,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         border = BorderStroke(
             if (warning != null) 2.dp else 1.dp,
-            if (warning != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant,
+            if (warning != null) MaterialTheme.colorScheme.error else MaterialTheme.extendedColors.glassBorder,
         ),
     ) {
         Column {
@@ -64,14 +68,13 @@ fun DetectedItemCard(
                 modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(text = item.displayEmoji, style = MaterialTheme.typography.titleLarge)
-                }
+                // The same ring as in the pantry, from the estimated date: what will need eating first.
+                FreshnessRing(
+                    emoji = item.displayEmoji,
+                    shelfLifeLeft = item.shelfLifeLeft(today),
+                    status = status,
+                    size = 54.dp,
+                )
 
                 Column(
                     modifier = Modifier
@@ -103,7 +106,7 @@ fun DetectedItemCard(
                             item.expiryDate.format(dateFormatter),
                         ),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.freshnessPalette.forStatus(status).onContainer,
                     )
                 }
 
@@ -117,7 +120,7 @@ fun DetectedItemCard(
                     Icon(
                         painter = painterResource(R.drawable.ic_delete),
                         contentDescription = stringResource(R.string.scanner_action_delete_item, item.name),
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = MaterialTheme.colorScheme.outline,
                     )
                 }
             }

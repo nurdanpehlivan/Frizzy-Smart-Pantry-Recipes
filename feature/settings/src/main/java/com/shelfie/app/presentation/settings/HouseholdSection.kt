@@ -7,6 +7,8 @@ import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,11 +16,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -40,11 +43,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -58,6 +66,7 @@ import com.shelfie.app.domain.model.HouseholdMember
 import com.shelfie.app.domain.model.HouseholdRole
 import com.shelfie.app.presentation.common.HighlightCard
 import com.shelfie.app.presentation.common.LocalAppInfo
+import com.shelfie.app.presentation.common.MemberAvatar
 import com.shelfie.app.presentation.common.Pill
 import com.shelfie.app.presentation.common.PremiumNudge
 import com.shelfie.app.presentation.common.ShelfieCard
@@ -71,33 +80,53 @@ import com.shelfie.app.presentation.theme.extendedColors
  * invite code, joining someone else's household. Each card shows only when it applies.
  */
 
-/** The top of the tab: the household at a glance, or what sharing is for when there is none yet. */
+/**
+ * The top of the tab. In a household: everyone's face, a dashed "invite" seat while there is
+ * room (owner only), and what you achieved together, which opens the statistics. Otherwise,
+ * what sharing is for.
+ */
 @Composable
-internal fun HouseholdHero(state: HouseholdUiState, myEmail: String?) {
+internal fun HouseholdHero(
+    state: HouseholdUiState,
+    myEmail: String?,
+    impact: HouseholdImpact? = null,
+    onInvite: (() -> Unit)? = null,
+    onOpenStatistics: () -> Unit = {},
+) {
     val extended = MaterialTheme.extendedColors
     val household = state.household
-    HighlightCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    HighlightCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             when {
                 household != null && household.role != HouseholdRole.NONE -> {
-                    AvatarStack(emails = household.members.map { it.email })
-                    Text(text = stringResource(R.string.household_hero_title), style = MaterialTheme.typography.headlineSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Pill(
-                            text = stringResource(R.string.household_members_count, household.members.size, household.maxMembers),
-                            containerColor = extended.heroTile,
-                            contentColor = extended.onHero,
-                        )
-                        Pill(
-                            text = stringResource(
+                    Text(
+                        text = stringResource(R.string.household_members_count, household.members.size, household.maxMembers) +
+                            " · " + stringResource(
                                 if (household.role == HouseholdRole.OWNER) R.string.household_role_owner else R.string.household_role_member,
                             ),
-                            containerColor = extended.heroTile,
-                            contentColor = extended.onHero,
-                        )
+                        style = MaterialTheme.typography.labelLarge,
+                        color = extended.onHeroVariant,
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        household.members.forEach { member ->
+                            MemberSeat(
+                                email = member.email,
+                                isMe = member.email.equals(myEmail, ignoreCase = true),
+                                isOwner = member.isOwner,
+                            )
+                        }
+                        if (onInvite != null && household.role == HouseholdRole.OWNER && household.members.size < household.maxMembers) {
+                            InviteSeat(onClick = onInvite)
+                        }
                     }
                     if (state.justJoined && household.role == HouseholdRole.MEMBER) {
                         Text(stringResource(R.string.household_joined), style = MaterialTheme.typography.bodyMedium, color = extended.onHeroVariant)
+                    }
+                    if (impact != null) {
+                        TogetherCard(impact = impact, onClick = onOpenStatistics)
                     }
                 }
                 else -> Row(verticalAlignment = Alignment.CenterVertically) {
@@ -116,6 +145,131 @@ internal fun HouseholdHero(state: HouseholdUiState, myEmail: String?) {
                     Frizzy(mood = FrizzyMood.HAPPY, size = 72.dp)
                 }
             }
+        }
+    }
+}
+
+private val SeatWidth = 76.dp
+
+/** One member: a big avatar with a white ring, the name (or "You") and the owner's crown. */
+@Composable
+private fun MemberSeat(email: String, isMe: Boolean, isOwner: Boolean) {
+    val extended = MaterialTheme.extendedColors
+    Column(
+        modifier = Modifier.width(SeatWidth),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        MemberAvatar(
+            email = email,
+            size = 60.dp,
+            modifier = Modifier.border(3.dp, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape),
+        )
+        Text(
+            text = if (isMe) stringResource(R.string.household_you) else displayName(email),
+            style = MaterialTheme.typography.titleSmall,
+            color = extended.onHero,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = stringResource(if (isOwner) R.string.household_role_owner else R.string.household_role_member),
+            style = MaterialTheme.typography.labelSmall,
+            color = extended.onHeroVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+/** The free seat: a dashed circle with a plus, taking the owner to the invite code. */
+@Composable
+private fun InviteSeat(onClick: () -> Unit) {
+    val extended = MaterialTheme.extendedColors
+    val dash = extended.onHeroVariant
+    Column(
+        modifier = Modifier
+            .width(SeatWidth)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick, role = Role.Button),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .drawBehind {
+                    val stroke = 2.dp.toPx()
+                    drawCircle(
+                        color = dash,
+                        radius = (size.minDimension - stroke) / 2,
+                        style = Stroke(width = stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))),
+                    )
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_add),
+                contentDescription = null,
+                tint = extended.onHero,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        Text(
+            text = stringResource(R.string.household_invite_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = extended.onHero,
+            maxLines = 1,
+        )
+        Text(text = " ", style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+/** "12 days without waste, together" and the month in numbers; opens the statistics. */
+@Composable
+private fun TogetherCard(impact: HouseholdImpact, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = scheme.surfaceContainerLowest,
+        contentColor = scheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(scheme.tertiaryContainer, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_streak),
+                    contentDescription = null,
+                    tint = scheme.tertiary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(
+                    text = if (impact.streakDays > 0) {
+                        pluralStringResource(R.plurals.household_streak_title, impact.streakDays, impact.streakDays)
+                    } else {
+                        stringResource(R.string.household_streak_zero)
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(R.string.household_month_summary, impact.monthEaten, impact.monthWasted),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -229,21 +383,29 @@ internal fun InviteCard(household: Household, isWorking: Boolean, onCreateInvite
     FamilyCard(title = stringResource(R.string.household_invite_title)) {
         if (invite != null) {
             val spaced = invite.code.chunked(4).joinToString(" ")
+            // The code as a ticket on the leaf hero: big, spaced, easy to read out loud.
+            val extended = MaterialTheme.extendedColors
             Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                shape = RoundedCornerShape(20.dp),
+                color = extended.hero,
+                contentColor = extended.onHero,
+                border = BorderStroke(1.5.dp, extended.heroBorder),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Row(modifier = Modifier.padding(start = 20.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = spaced,
-                        style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Monospace, letterSpacing = 3.sp),
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = { copyToClipboard(context, invite.code) }) {
+                Row(modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.household_code),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = extended.onHeroVariant,
+                        )
+                        Text(
+                            text = spaced,
+                            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Monospace, letterSpacing = 3.sp),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    FilledTonalButton(onClick = { copyToClipboard(context, invite.code) }) {
                         Text(stringResource(R.string.household_copy))
                     }
                 }
@@ -295,7 +457,7 @@ internal fun JoinCard(initialCode: String, isWorking: Boolean, onJoin: (String) 
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
                 textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace, letterSpacing = 2.sp),
-                shape = MaterialTheme.shapes.small,
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
@@ -340,76 +502,36 @@ internal fun HouseholdStatus(state: HouseholdUiState, onRetry: () -> Unit, onOpe
     }
 }
 
-/** A titled glass card, the building block of the family tab. */
+/**
+ * The building block of the family tab: the title above a rounded white card, like the
+ * settings' sections and the shopping list's aisles.
+ */
 @Composable
 internal fun FamilyCard(title: String, content: @Composable () -> Unit) {
-    ShelfieCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            content()
-        }
-    }
-}
-
-/** A round initial in a colour of its own, stable per person. */
-@Composable
-internal fun Avatar(email: String, size: Int) {
-    val colors = avatarColors()
-    val (background, foreground) = colors[Math.floorMod(email.lowercase().hashCode(), colors.size)]
-    Box(
-        modifier = Modifier
-            .size(size.dp)
-            .background(background, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = displayName(email).take(1).uppercase(),
-            color = foreground,
-            style = if (size >= 40) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, top = 6.dp),
         )
-    }
-}
-
-/** The members' avatars overlapping, as in a group chat. */
-@Composable
-private fun AvatarStack(emails: List<String>) {
-    val ring = MaterialTheme.extendedColors.hero
-    Row {
-        emails.take(MAX_STACKED).forEachIndexed { index, email ->
-            Box(
-                modifier = Modifier
-                    .offset(x = (-10 * index).dp)
-                    .border(3.dp, ring, CircleShape),
-            ) { Avatar(email = email, size = 44) }
+        ShelfieCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                content()
+            }
         }
     }
 }
 
-/**
- * Saturated colours with white initials: they stand out on the pale leaf hero and the cream
- * cards in light mode as well as on the dark background. (The theme's container tones were
- * almost the hero's own colour in light mode.)
- */
-private val AVATAR_COLORS = listOf(
-    Color(0xFF2E7D57), // emerald
-    Color(0xFFD9822B), // amber
-    Color(0xFFD9544A), // coral
-    Color(0xFF4F63C4), // indigo
-    Color(0xFF8E4FB5), // plum
-    Color(0xFF1C8A8A), // teal
-    Color(0xFFB5487A), // berry
-)
-
+/** A round initial in a colour of its own, stable per person; see [MemberAvatar]. */
 @Composable
-private fun avatarColors(): List<Pair<Color, Color>> = AVATAR_COLORS.map { it to Color.White }
+internal fun Avatar(email: String, size: Int) = MemberAvatar(email = email, size = size.dp)
 
 private fun copyToClipboard(context: Context, code: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText("Frizzy", code))
 }
 
-private const val MAX_STACKED = 6
 
 /** 8 characters, plus room for a space or dash pasted from the shared message. */
 private const val INVITE_INPUT_LENGTH = 9

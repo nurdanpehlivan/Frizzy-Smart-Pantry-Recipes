@@ -1,5 +1,6 @@
 package com.shelfie.app.domain.usecase
 
+import com.shelfie.app.domain.model.FoodWeight
 import com.shelfie.app.domain.model.ItemValue
 import com.shelfie.app.domain.model.PantryItem
 import com.shelfie.app.domain.model.PantryStatistics
@@ -62,6 +63,7 @@ class ObserveStatisticsUseCase @Inject constructor(
                 savedItems = saved,
                 wastedItems = thrownAway,
                 averageItemValue = settings.averageItemValue,
+                savedKg = saved.sumOf { FoodWeight.kg(it.item) },
                 currencyCode = settings.currencyCode,
                 weekly = weeklyChart(removed, chartStart),
                 topWastedCategories = wasted

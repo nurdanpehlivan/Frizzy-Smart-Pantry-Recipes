@@ -3,34 +3,38 @@ package com.shelfie.app.presentation.settings
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -42,9 +46,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shelfie.app.core.ui.R
 import com.shelfie.app.domain.model.HouseholdAction
 import com.shelfie.app.domain.model.HouseholdActivity
-import com.shelfie.app.presentation.common.ShelfieCard
 import com.shelfie.app.presentation.common.ShelfieTopBar
 import com.shelfie.app.presentation.common.shelfieFilterChipColors
+import com.shelfie.app.presentation.mascot.Frizzy
+import com.shelfie.app.presentation.mascot.FrizzyMood
+import com.shelfie.app.presentation.theme.extendedColors
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -149,7 +155,6 @@ private fun ActivityList(
         state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(key = "filters") {
             // Only kinds that happened, so no chip leads to an empty list.
@@ -184,13 +189,23 @@ private fun ActivityList(
                         else -> day.format(dateFormatter)
                     },
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, top = 12.dp).animateItem(),
                 )
             }
-            items(items = dayEvents, key = { it.id }) { event ->
-                ShelfieCard(modifier = Modifier.fillMaxWidth().animateItem()) {
-                    ActivityRow(event = event, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+            // One card per day: the rows are slices of it, only the first and last round off.
+            itemsIndexed(items = dayEvents, key = { _, event -> event.id }) { index, event ->
+                val top = if (index == 0) DAY_CARD_RADIUS else 0.dp
+                val bottom = if (index == dayEvents.lastIndex) DAY_CARD_RADIUS else 0.dp
+                Surface(
+                    shape = RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom),
+                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                    modifier = Modifier.fillMaxWidth().animateItem(),
+                ) {
+                    Column {
+                        if (index > 0) HorizontalDivider(color = MaterialTheme.extendedColors.glassBorder, modifier = Modifier.padding(start = 76.dp))
+                        ActivityRow(event = event, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+                    }
                 }
             }
         }
@@ -204,6 +219,8 @@ private fun ActivityList(
     }
 }
 
+private val DAY_CARD_RADIUS = 22.dp
+
 /** How close to the end (in list rows) the next page starts loading. */
 private const val LOAD_MORE_THRESHOLD = 5
 
@@ -214,7 +231,7 @@ private fun EmptyState(onOpenFamily: () -> Unit, modifier: Modifier = Modifier) 
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = "🔔", style = MaterialTheme.typography.displayMedium)
+        Frizzy(mood = FrizzyMood.SLEEPY, size = 140.dp)
         Text(
             text = stringResource(R.string.notifications_empty),
             style = MaterialTheme.typography.bodyLarge,

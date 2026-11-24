@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shelfie.app.domain.model.PantryStatistics
 import com.shelfie.app.domain.model.StatisticsPeriod
+import com.shelfie.app.domain.model.WasteFreeStreak
 import com.shelfie.app.domain.repository.SettingsRepository
 import com.shelfie.app.domain.usecase.ObserveStatisticsUseCase
+import com.shelfie.app.domain.usecase.ObserveWasteFreeStreakUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Clock
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class StatisticsUiState(
@@ -28,7 +32,13 @@ data class StatisticsUiState(
 class StatisticsViewModel @Inject constructor(
     observeStatistics: ObserveStatisticsUseCase,
     private val settingsRepository: SettingsRepository,
+    observeWasteFreeStreak: ObserveWasteFreeStreakUseCase,
+    clock: Clock,
 ) : ViewModel() {
+
+    /** The streak card on top; it doesn't depend on the period. `null` before the pantry was used. */
+    val streak: StateFlow<WasteFreeStreak.Summary?> = observeWasteFreeStreak.summary(LocalDate.now(clock))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val period = MutableStateFlow(StatisticsPeriod.MONTH)
 

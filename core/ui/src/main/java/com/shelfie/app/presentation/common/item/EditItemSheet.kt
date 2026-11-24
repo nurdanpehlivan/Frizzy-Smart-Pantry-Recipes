@@ -1,6 +1,7 @@
 package com.shelfie.app.presentation.common.item
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,13 +11,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -52,20 +53,25 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shelfie.app.core.ui.R
 import com.shelfie.app.domain.model.Category
 import com.shelfie.app.domain.model.FoodCategories
+import com.shelfie.app.domain.model.FreshnessStatus
 import com.shelfie.app.domain.model.MeasurementUnit
 import com.shelfie.app.domain.model.PantryItem
 import com.shelfie.app.domain.model.ShelfLife
 import com.shelfie.app.domain.model.StorageLocation
+import com.shelfie.app.presentation.common.FreshnessRing
 import com.shelfie.app.presentation.common.daysLeftText
 import com.shelfie.app.presentation.common.emoji
+import com.shelfie.app.presentation.common.foodEmoji
 import com.shelfie.app.presentation.common.formatQuantity
 import com.shelfie.app.presentation.common.labelRes
 import com.shelfie.app.presentation.common.parseQuantity
 import com.shelfie.app.presentation.common.shelfieFilterChipColors
+import com.shelfie.app.presentation.theme.extendedColors
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -148,6 +154,13 @@ fun EditItemSheet(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall,
             )
+            // How it will look in the pantry, live while typing: emoji, ring and days left.
+            ItemPreview(
+                name = name.trim(),
+                category = category,
+                location = location,
+                previewItem = item.copy(name = name.trim(), category = category, expiryDate = LocalDate.ofEpochDay(expiryEpochDay)),
+            )
             headerContent()
 
             OutlinedTextField(
@@ -169,7 +182,7 @@ fun EditItemSheet(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Next,
                 ),
-                shape = MaterialTheme.shapes.small,
+                shape = FieldShape,
                 modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
             )
 
@@ -183,7 +196,7 @@ fun EditItemSheet(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Done,
                 ),
-                shape = MaterialTheme.shapes.small,
+                shape = FieldShape,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -228,7 +241,7 @@ fun EditItemSheet(
                             locationTouched = true
                             reestimate()
                         },
-                        label = { Text(stringResource(option.labelRes)) },
+                        label = { Text("${option.emoji} ${stringResource(option.labelRes)}") },
                         shape = CircleShape,
                         colors = shelfieFilterChipColors(),
                     )
@@ -290,7 +303,53 @@ private fun ChipRow(content: @Composable () -> Unit) {
 
 @Composable
 private fun SectionLabel(textRes: Int) {
-    Text(text = stringResource(textRes), style = MaterialTheme.typography.titleSmall)
+    Text(
+        text = stringResource(textRes).uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+private val FieldShape = RoundedCornerShape(16.dp)
+
+/** The item as the pantry will show it, updated as the form changes. */
+@Composable
+private fun ItemPreview(name: String, category: Category, location: StorageLocation, previewItem: PantryItem) {
+    val extended = MaterialTheme.extendedColors
+    val today = remember { LocalDate.now() }
+    val expiry = previewItem.expiryDate
+    val status = FreshnessStatus.from(expiry, today)
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = extended.hero,
+        contentColor = extended.onHero,
+        border = BorderStroke(1.dp, extended.heroBorder),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            FreshnessRing(
+                emoji = if (name.isBlank()) category.emoji else foodEmoji(name, category),
+                shelfLifeLeft = previewItem.shelfLifeLeft(today),
+                status = status,
+                size = 56.dp,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = name.ifBlank { stringResource(R.string.edit_preview_placeholder) },
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = daysLeftText(ChronoUnit.DAYS.between(today, expiry)) + " · " + location.emoji + " " + stringResource(location.labelRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = extended.onHeroVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -328,7 +387,7 @@ private fun ExpiryPicker(expiry: LocalDate, onExpiryChange: (LocalDate) -> Unit,
                 onClick = { showCalendar = true },
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                border = BorderStroke(1.dp, MaterialTheme.extendedColors.glassBorder),
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 8.dp),

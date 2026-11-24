@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,17 +23,18 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +46,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,14 +73,13 @@ import com.shelfie.app.presentation.common.ScreenHeader
 import com.shelfie.app.presentation.common.rangeText
 import com.shelfie.app.presentation.common.titleRes
 import com.shelfie.app.presentation.dashboard.components.AddItemSheet
-import com.shelfie.app.presentation.dashboard.components.FreshnessBar
+import com.shelfie.app.presentation.dashboard.components.FrizzyHeroCard
 import com.shelfie.app.presentation.dashboard.components.ItemEditSheet
 import com.shelfie.app.presentation.dashboard.components.LocationChips
-import com.shelfie.app.presentation.dashboard.components.PantryOverviewCards
 import com.shelfie.app.presentation.dashboard.components.PantrySearchField
-import com.shelfie.app.presentation.dashboard.components.RescueRecipeBanner
-import com.shelfie.app.presentation.dashboard.components.ScanActions
+import com.shelfie.app.presentation.dashboard.components.QuickAddButton
 import com.shelfie.app.presentation.dashboard.components.SwipeablePantryItemCard
+import com.shelfie.app.presentation.dashboard.components.UseTodaySection
 import com.shelfie.app.presentation.mascot.FrizzyMood
 import com.shelfie.app.presentation.mascot.MascotMessage
 import com.shelfie.app.presentation.theme.ShelfieTheme
@@ -94,6 +100,7 @@ fun DashboardRoute(
     onNavigateToRecipe: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToStatistics: () -> Unit = {},
     savedItemsCount: Int? = null,
     onSavedItemsMessageShown: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel(),
@@ -106,7 +113,9 @@ fun DashboardRoute(
     val currentOnNavigateToRecipe by rememberUpdatedState(onNavigateToRecipe)
     val currentOnNavigateToSettings by rememberUpdatedState(onNavigateToSettings)
     val currentOnNavigateToNotifications by rememberUpdatedState(onNavigateToNotifications)
+    val currentOnNavigateToStatistics by rememberUpdatedState(onNavigateToStatistics)
     val unseenActivity by viewModel.unseenActivity.collectAsStateWithLifecycle()
+    val wasteFreeStreak by viewModel.wasteFreeStreak.collectAsStateWithLifecycle()
 
     // The household may have changed things while the app was away.
     LifecycleResumeEffect(viewModel) {
@@ -126,6 +135,7 @@ fun DashboardRoute(
                         DashboardEffect.NavigateToRecipe -> currentOnNavigateToRecipe()
                         DashboardEffect.NavigateToSettings -> currentOnNavigateToSettings()
                         DashboardEffect.NavigateToNotifications -> currentOnNavigateToNotifications()
+                        DashboardEffect.NavigateToStatistics -> currentOnNavigateToStatistics()
 
                         is DashboardEffect.ItemAdded -> snackbarScope.launch {
                             snackbarHostState.showSnackbar(
@@ -206,6 +216,7 @@ fun DashboardRoute(
         snackbarHostState = snackbarHostState,
         onIntent = viewModel::onIntent,
         unseenActivity = unseenActivity,
+        wasteFreeStreak = wasteFreeStreak,
     )
 
     editItem?.let { item ->
@@ -226,9 +237,10 @@ fun DashboardScreen(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     /** News from the household since the user last looked: a badge on the family button. */
     unseenActivity: Int = 0,
+    /** Days without throwing food away; `null` hides the flame badge, see [StreakBadge]. */
+    wasteFreeStreak: Int? = null,
 ) {
     val listState = rememberLazyListState()
-    val fabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     // Open while there is a query, so coming back to the tab keeps the search visible.
     var isSearching by rememberSaveable { mutableStateOf(state.query.isNotEmpty()) }
 
@@ -237,12 +249,9 @@ fun DashboardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             // The empty state has its own big buttons for the same actions.
+            // Scanning is the raised button in the middle of the dock; manual entry stays here.
             if (!state.isEmpty) {
-                ScanActions(
-                    expanded = fabExpanded,
-                    onScan = { onIntent(DashboardIntent.ScanNewPhoto) },
-                    onQuickAdd = { onIntent(DashboardIntent.OpenAddItem) },
-                )
+                QuickAddButton(onClick = { onIntent(DashboardIntent.OpenAddItem) })
             }
         },
     ) { innerPadding ->
@@ -266,7 +275,7 @@ fun DashboardScreen(
                 )
                 // A new member's pantry starts empty; family and settings must still be reachable.
                 Row(modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 20.dp)) {
-                    HeaderActions(unseenActivity = unseenActivity, onIntent = onIntent)
+                    HeaderActions(unseenActivity = unseenActivity, wasteFreeStreak = wasteFreeStreak, onIntent = onIntent)
                 }
             }
 
@@ -290,7 +299,7 @@ fun DashboardScreen(
                                 onClick = { isSearching = true },
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            HeaderActions(unseenActivity = unseenActivity, onIntent = onIntent)
+                            HeaderActions(unseenActivity = unseenActivity, wasteFreeStreak = wasteFreeStreak, onIntent = onIntent)
                         },
                     )
                 }
@@ -306,35 +315,16 @@ fun DashboardScreen(
                         )
                     }
                 }
-                item(key = "overview") {
-                    PantryOverviewCards(
-                        safeCount = state.fresh.size,
+                item(key = "hero") {
+                    FrizzyHeroCard(
                         criticalCount = state.critical.size,
                         warningCount = state.warning.size,
+                        freshCount = state.fresh.size,
                         selectedFilter = state.selectedFilter,
                         onFilterSelected = { onIntent(DashboardIntent.SelectFilter(it)) },
+                        showRescueRecipe = state.hasRescuableItems,
+                        onRescueRecipe = { onIntent(DashboardIntent.OpenRescueRecipe) },
                     )
-                }
-                if (state.selectedFilter != null) {
-                    item(key = "showAll") {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            TextButton(onClick = { onIntent(DashboardIntent.SelectFilter(null)) }) {
-                                Text("✕  " + stringResource(R.string.dashboard_show_all))
-                            }
-                        }
-                    }
-                }
-                item(key = "freshnessBar") {
-                    FreshnessBar(
-                        safeCount = state.fresh.size,
-                        warningCount = state.warning.size,
-                        criticalCount = state.critical.size,
-                    )
-                }
-                if (state.hasRescuableItems) {
-                    item(key = "rescueRecipe") {
-                        RescueRecipeBanner(onClick = { onIntent(DashboardIntent.OpenRescueRecipe) })
-                    }
                 }
                 item(key = "locations") {
                     LocationChips(
@@ -360,6 +350,27 @@ fun DashboardScreen(
                     }
                     return@LazyColumn
                 }
+                // Critical items get the big "use today" cards instead of a list group.
+                if (FreshnessStatus.CRITICAL in state.visibleGroups && state.critical.isNotEmpty()) {
+                    item(key = "useToday") {
+                        UseTodaySection(
+                            items = state.critical,
+                            onEaten = { onIntent(DashboardIntent.MarkConsumed(it.item.id)) },
+                            onCook = { onIntent(DashboardIntent.OpenRescueRecipe) },
+                            onOpen = { onIntent(DashboardIntent.OpenItem(it.item.id)) },
+                        )
+                    }
+                    val expiredCount = state.expiredItems.size
+                    if (expiredCount > 0) {
+                        item(key = "discardExpired") {
+                            DiscardExpiredButton(
+                                count = expiredCount,
+                                onConfirm = { onIntent(DashboardIntent.DiscardExpired) },
+                            )
+                        }
+                    }
+                }
+
                 item(key = "swipeHint") {
                     Text(
                         text = stringResource(R.string.dashboard_swipe_hint),
@@ -370,19 +381,10 @@ fun DashboardScreen(
                     )
                 }
 
-                state.visibleGroups.forEach { status ->
+                state.visibleGroups.filter { it != FreshnessStatus.CRITICAL }.forEach { status ->
                     val items = state.itemsFor(status)
                     stickyHeader(key = "header_$status") {
                         GroupHeader(status = status, count = items.size, thresholds = state.thresholds)
-                    }
-                    val expiredCount = state.expiredItems.size
-                    if (status == FreshnessStatus.CRITICAL && expiredCount > 0) {
-                        item(key = "discardExpired") {
-                            DiscardExpiredButton(
-                                count = expiredCount,
-                                onConfirm = { onIntent(DashboardIntent.DiscardExpired) },
-                            )
-                        }
                     }
                     if (items.isEmpty()) {
                         item(key = "empty_$status") {
@@ -517,9 +519,17 @@ private fun DashboardEmptyPreview() {
     }
 }
 
-/** Notifications (with a badge for news from the household) and settings, top right of the pantry. */
+/**
+ * The waste-free streak, notifications (with a badge for news from the household) and settings,
+ * top right of the pantry.
+ */
 @Composable
-private fun HeaderActions(unseenActivity: Int, onIntent: (DashboardIntent) -> Unit) {
+private fun HeaderActions(unseenActivity: Int, wasteFreeStreak: Int?, onIntent: (DashboardIntent) -> Unit) {
+    // Shown from the pantry's first day, also at 0: it is the way into the statistics.
+    if (wasteFreeStreak != null) {
+        StreakBadge(days = wasteFreeStreak, onClick = { onIntent(DashboardIntent.OpenStatistics) })
+        Spacer(modifier = Modifier.width(8.dp))
+    }
     BadgedBox(
         badge = {
             if (unseenActivity > 0) Badge { Text(if (unseenActivity > MAX_BADGE) "$MAX_BADGE+" else "$unseenActivity") }
@@ -540,3 +550,39 @@ private fun HeaderActions(unseenActivity: Int, onIntent: (DashboardIntent) -> Un
 }
 
 private const val MAX_BADGE = 9
+
+/**
+ * Flame and the number of days in a row without throwing food away; opens the statistics.
+ * On day 0 (right after something was thrown away) it turns a quiet grey instead of carrot,
+ * so the header never scolds but the statistics stay one tap away.
+ */
+@Composable
+private fun StreakBadge(days: Int, onClick: () -> Unit) {
+    val description = pluralStringResource(R.plurals.streak_badge_description, days, days)
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (days > 0) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (days > 0) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .height(44.dp)
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+            },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(start = 10.dp, end = 14.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_streak),
+                contentDescription = null,
+                tint = if (days > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(text = days.toString(), style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}

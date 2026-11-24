@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,12 +33,10 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +44,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -60,6 +59,7 @@ import com.shelfie.app.domain.model.ThemeMode
 import com.shelfie.app.presentation.common.COMMON_CURRENCIES
 import com.shelfie.app.presentation.common.HighlightCard
 import com.shelfie.app.presentation.common.LocalAppInfo
+import com.shelfie.app.presentation.common.MemberAvatar
 import com.shelfie.app.presentation.common.ShelfieCard
 import com.shelfie.app.presentation.common.ShelfieTopBar
 import com.shelfie.app.presentation.common.currencySymbol
@@ -228,7 +228,7 @@ private fun PremiumCard(onClick: () -> Unit) {
     val extended = MaterialTheme.extendedColors
     HighlightCard(onClick = onClick, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "✨", style = MaterialTheme.typography.headlineSmall)
+            Frizzy(mood = FrizzyMood.CELEBRATING, size = 52.dp, animated = false)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.premium_title), style = MaterialTheme.typography.titleMedium)
@@ -247,11 +247,17 @@ private fun PremiumCard(onClick: () -> Unit) {
 private fun AccountCard(email: String?, onClick: () -> Unit) {
     ShelfieCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(R.drawable.ic_group),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            // Signed in: your own avatar, in the colour the household sees you in.
+            if (email != null) {
+                MemberAvatar(email = email, size = 40.dp)
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.ic_group),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(40.dp).padding(8.dp),
+                )
+            }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.account_screen_title), style = MaterialTheme.typography.titleMedium)
@@ -275,12 +281,12 @@ private fun AccountCard(email: String?, onClick: () -> Unit) {
 private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = title,
+            text = title.uppercase(),
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 4.dp, top = 8.dp),
         )
-        ShelfieCard(modifier = Modifier.fillMaxWidth()) {
+        ShelfieCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 content()
             }

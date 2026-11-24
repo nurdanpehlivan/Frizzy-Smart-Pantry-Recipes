@@ -28,7 +28,12 @@ data class PantryStatistics(
     val wastedItems: List<ValuedItem> = emptyList(),
     /** The user's "average product" value the amounts were worked out from. */
     val averageItemValue: Double = AppSettings.DEFAULT_AVERAGE_ITEM_VALUE,
+    /** Rough weight of the food eaten just in time (the same items as [estimatedSavings]), see [FoodWeight]. */
+    val savedKg: Double = 0.0,
 ) {
+    /** Greenhouse gases the saved food would have meant as waste, in kg CO₂e; an estimate. */
+    val co2AvoidedKg: Double get() = savedKg * FoodWeight.CO2_KG_PER_KG
+
     val totalCount: Int get() = rescuedCount + wastedCount
 
     /** Share of removed items that were eaten, 0–1; `null` while nothing has been removed. */

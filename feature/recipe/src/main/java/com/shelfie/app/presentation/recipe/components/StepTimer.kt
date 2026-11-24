@@ -2,11 +2,16 @@ package com.shelfie.app.presentation.recipe.components
 
 import android.media.AudioManager
 import android.media.ToneGenerator
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,6 +24,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
@@ -67,6 +77,11 @@ fun StepTimer(minutes: Int, stepIndex: Int, modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Row(modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (running || (remaining in 1 until total)) {
+                // How much of the wait is left, like the pantry's freshness ring.
+                TimerRing(fraction = remaining.toFloat() / total, color = LocalContentColor.current)
+                Spacer(Modifier.width(8.dp))
+            }
             Text(text = if (running) "⏸" else "⏲", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.width(10.dp))
             Text(
@@ -78,6 +93,26 @@ fun StepTimer(minutes: Int, stepIndex: Int, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.titleMedium,
             )
         }
+    }
+}
+
+@Composable
+private fun TimerRing(fraction: Float, color: Color) {
+    val sweep by animateFloatAsState(fraction, animationSpec = tween(durationMillis = 900), label = "timerRing")
+    Canvas(modifier = Modifier.size(22.dp)) {
+        val stroke = 3.dp.toPx()
+        val arc = Size(size.width - stroke, size.height - stroke)
+        val topLeft = Offset(stroke / 2, stroke / 2)
+        drawArc(color = color.copy(alpha = 0.3f), startAngle = 0f, sweepAngle = 360f, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
+        drawArc(
+            color = color,
+            startAngle = -90f,
+            sweepAngle = 360f * sweep,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arc,
+            style = Stroke(stroke, cap = StrokeCap.Round),
+        )
     }
 }
 

@@ -44,7 +44,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shelfie.app.core.ui.R
 import com.shelfie.app.domain.model.PantryStatistics
 import com.shelfie.app.domain.model.StatisticsPeriod
+import com.shelfie.app.domain.model.WasteFreeStreak
 import com.shelfie.app.presentation.common.HighlightCard
+import com.shelfie.app.presentation.common.GlassIconButton
 import com.shelfie.app.presentation.common.ScreenHeader
 import com.shelfie.app.presentation.common.ShelfieCard
 import com.shelfie.app.presentation.common.emoji
@@ -59,10 +61,16 @@ import com.shelfie.app.presentation.theme.extendedColors
 import java.text.NumberFormat
 
 @Composable
-fun StatisticsRoute(viewModel: StatisticsViewModel = hiltViewModel()) {
+fun StatisticsRoute(
+    onNavigateUp: (() -> Unit)? = null,
+    viewModel: StatisticsViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val streak by viewModel.streak.collectAsStateWithLifecycle()
     StatisticsScreen(
         state = state,
+        streak = streak,
+        onNavigateUp = onNavigateUp,
         onPeriodSelected = viewModel::selectPeriod,
         onAverageValueChange = viewModel::setAverageItemValue,
     )
@@ -74,6 +82,10 @@ fun StatisticsScreen(
     state: StatisticsUiState,
     onPeriodSelected: (StatisticsPeriod) -> Unit,
     onAverageValueChange: (Double) -> Unit = {},
+    /** Opened from the pantry's streak badge, so there is a way back; `null` hides the arrow. */
+    onNavigateUp: (() -> Unit)? = null,
+    /** The waste-free streak, shown above the period filter: it doesn't depend on it. */
+    streak: WasteFreeStreak.Summary? = null,
 ) {
     var breakdownName by rememberSaveable { mutableStateOf<String?>(null) }
     val breakdown = ValueBreakdown.entries.firstOrNull { it.name == breakdownName }
@@ -96,7 +108,18 @@ fun StatisticsScreen(
                 .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ScreenHeader(title = stringResource(R.string.stats_title))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onNavigateUp != null) {
+                    GlassIconButton(
+                        painter = painterResource(R.drawable.ic_arrow_back),
+                        contentDescription = stringResource(R.string.action_navigate_up),
+                        onClick = onNavigateUp,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
+                ScreenHeader(title = stringResource(R.string.stats_title), modifier = Modifier.weight(1f))
+            }
+            streak?.let { StreakCard(it) }
             // Filters sit in one row above everything they affect.
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 StatisticsPeriod.entries.forEachIndexed { index, period ->
@@ -139,6 +162,12 @@ fun StatisticsScreen(
                     onClick = { breakdownName = ValueBreakdown.WASTED.name },
                 )
             }
+            // What the saved food means beyond money; both are estimates, hence "≈".
+            val weight = remember { NumberFormat.getNumberInstance().apply { maximumFractionDigits = 1 } }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile("⚖", "≈ ${weight.format(stats.savedKg)} kg", stringResource(R.string.stats_tile_kg), Modifier.weight(1f))
+                StatTile("🌱", "≈ ${weight.format(stats.co2AvoidedKg)} kg", stringResource(R.string.stats_tile_co2), Modifier.weight(1f))
+            }
             StatTile("👩‍🍳", stats.cookedRecipeCount.toString(), stringResource(R.string.stats_tile_cooked), Modifier.fillMaxWidth())
 
             ChartCard(stats)
@@ -146,7 +175,7 @@ fun StatisticsScreen(
             if (stats.topWastedCategories.isNotEmpty()) TopWastedCard(stats)
 
             Text(
-                text = stringResource(R.string.stats_footnote),
+                text = stringResource(R.string.stats_footnote) + " " + stringResource(R.string.stats_impact_footnote),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 4.dp),

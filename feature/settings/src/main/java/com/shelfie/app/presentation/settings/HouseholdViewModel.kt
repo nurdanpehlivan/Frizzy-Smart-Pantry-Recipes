@@ -9,16 +9,24 @@ import com.shelfie.app.domain.model.Household
 import com.shelfie.app.domain.model.HouseholdActivity
 import com.shelfie.app.domain.model.HouseholdException
 import com.shelfie.app.domain.model.HouseholdRole
+import com.shelfie.app.domain.model.StatisticsPeriod
 import com.shelfie.app.domain.repository.AccountRepository
 import com.shelfie.app.domain.repository.HouseholdRepository
+import com.shelfie.app.domain.usecase.ObserveStatisticsUseCase
+import com.shelfie.app.domain.usecase.ObserveWasteFreeStreakUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class HouseholdUiState(
@@ -39,12 +47,29 @@ data class HouseholdUiState(
     val isShared: Boolean get() = household != null && household.role != HouseholdRole.NONE
 }
 
+/** What the household achieved together: the shared streak and this month's eaten vs thrown. */
+data class HouseholdImpact(val streakDays: Int, val monthEaten: Int, val monthWasted: Int)
+
 @HiltViewModel
 class HouseholdViewModel @Inject constructor(
     private val householdRepository: HouseholdRepository,
     accountRepository: AccountRepository,
     savedStateHandle: SavedStateHandle,
+    observeWasteFreeStreak: ObserveWasteFreeStreakUseCase,
+    observeStatistics: ObserveStatisticsUseCase,
+    clock: Clock,
 ) : ViewModel() {
+
+    /**
+     * The household's streak and month, from the shared pantry; `null` before it was used.
+     * Today is read once: the family tab is short-lived enough not to need a midnight ticker.
+     */
+    val impact: StateFlow<HouseholdImpact?> = combine(
+        observeWasteFreeStreak(LocalDate.now(clock)),
+        observeStatistics(StatisticsPeriod.MONTH),
+    ) { streak, month ->
+        streak?.let { HouseholdImpact(it, month.rescuedCount, month.wastedCount) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** The settings route's `joinCode` argument, set when an invite link opened the app. */
     private val linkCode: String = savedStateHandle.get<String>(JOIN_CODE_ARG).orEmpty()

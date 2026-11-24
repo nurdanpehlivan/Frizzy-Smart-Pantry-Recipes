@@ -51,6 +51,9 @@ class ObserveStatisticsUseCaseTest {
         // One dairy item (weight 1.0) eaten on its last day.
         assertEquals(40.0, stats.estimatedSavings, 0.001)
         assertEquals(1, stats.savedCount)
+        // One dairy piece: a typical 250 g, and its CO₂ at the app's rough factor.
+        assertEquals(0.25, stats.savedKg, 0.001)
+        assertEquals(0.625, stats.co2AvoidedKg, 0.001)
         // Two vegetable items (weight 0.6).
         assertEquals(48.0, stats.wastedValue, 0.001)
         assertEquals(2, stats.cookedRecipeCount)

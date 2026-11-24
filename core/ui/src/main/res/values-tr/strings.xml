@@ -617,4 +617,90 @@
         <item quantity="one">Aileden %d yenilik</item>
         <item quantity="other">Aileden %d yenilik</item>
     </plurals>
+
+    <!-- Flame badge on the pantry header: days in a row with nothing thrown away. -->
+    <plurals name="streak_badge_description">
+        <item quantity="one">%d gündür hiç yiyecek atılmadı. İstatistikleri aç</item>
+        <item quantity="other">%d gündür hiç yiyecek atılmadı. İstatistikleri aç</item>
+    </plurals>
+
+    <!-- Pantry v2: freshness ring, Frizzy hero card and the "use first" cards. -->
+    <string name="freshness_ring_description">Kalan raf ömrü: %%%1$d</string>
+    <plurals name="dashboard_hero_critical_title">
+        <item quantity="one">%d ürün seni bekliyor</item>
+        <item quantity="other">%d ürün seni bekliyor</item>
+    </plurals>
+    <string name="dashboard_hero_critical_message">Bozulmadan ye ya da pişir.</string>
+    <plurals name="dashboard_hero_warning_title">
+        <item quantity="one">Bu hafta %d ürün tüketilmeli</item>
+        <item quantity="other">Bu hafta %d ürün tüketilmeli</item>
+    </plurals>
+    <string name="dashboard_hero_warning_message">Acil bir şey yok. Olunca sana haber veririm.</string>
+    <string name="dashboard_hero_fresh_title">Her şey taze!</string>
+    <string name="dashboard_hero_fresh_message">Şu an seni bekleyen bir şey yok. Ben göz kulak oluyorum.</string>
+    <string name="dashboard_use_today">Önce bunlar</string>
+    <string name="dashboard_action_eaten_item">%1$s yendi olarak işaretle</string>
+    <string name="dashboard_action_cook_item">%1$s ile pişir</string>
+
+    <!-- Shopping v2: floating bar that moves everything bought into the pantry. -->
+    <plurals name="shopping_bought_ready">
+        <item quantity="one">%d ürün alındı, kilere koy</item>
+        <item quantity="other">%d ürün alındı, kilere koy</item>
+    </plurals>
+    <string name="shopping_tag_recipe">Tarif</string>
+    <string name="shopping_added_by">Ekleyen: %1$s</string>
+
+    <!-- Family tab v2: the household's shared streak and month. -->
+    <plurals name="household_streak_title">
+        <item quantity="one">Birlikte %d gündür atık yok</item>
+        <item quantity="other">Birlikte %d gündür atık yok</item>
+    </plurals>
+    <string name="household_streak_zero">Birlikte yeni bir seri başlatın</string>
+    <string name="household_month_summary">Bu ay: %1$d yendi · %2$d atıldı</string>
+
+    <!-- Statistics v2: the streak card and the weight / CO₂ tiles. -->
+    <plurals name="stats_streak_unit">
+        <item quantity="one">gün</item>
+        <item quantity="other">gün</item>
+    </plurals>
+    <string name="stats_streak_body">üst üste hiç yiyecek atılmadı</string>
+    <plurals name="stats_streak_best">
+        <item quantity="one">En iyi serin: %d gün</item>
+        <item quantity="other">En iyi serin: %d gün</item>
+    </plurals>
+    <string name="stats_streak_best_now">Şimdiye kadarki en iyi serin!</string>
+    <string name="stats_day_clean">%1$s: hiçbir şey atılmadı</string>
+    <string name="stats_day_wasted">%1$s: bir şey atıldı</string>
+    <string name="stats_tile_kg">yiyecek kurtarıldı</string>
+    <string name="stats_tile_co2">CO₂ engellendi</string>
+    <string name="stats_impact_footnote">Ağırlık ve CO₂, ürünün türü ve miktarından yapılan tahminlerdir.</string>
+
+    <!-- Recipes tab v2: chef Frizzy's card, quick actions and recipe cards. -->
+    <string name="history_counts">%1$d kayıtlı · %2$d pişirildi</string>
+    <plurals name="history_hero_expiring_title">
+        <item quantity="one">%d ürün tüketilmeli</item>
+        <item quantity="other">%d ürün tüketilmeli</item>
+    </plurals>
+    <string name="history_hero_expiring_body">Bunları hızlı bir yemeğe çevirebilirim.</string>
+    <string name="history_hero_cta">Tarif al</string>
+    <string name="history_hero_idle_title">Bozulmak üzere bir şey yok</string>
+    <string name="history_hero_idle_body">Kilerinden istediğini seç, sana bir tarif bulayım.</string>
+    <string name="history_hero_pick">Seç</string>
+    <string name="history_pick_sub">Malzeme seç</string>
+    <plurals name="history_plan_sub">
+        <item quantity="one">%d öğün planlı</item>
+        <item quantity="other">%d öğün planlı</item>
+    </plurals>
+    <string name="history_plan_empty">Henüz plan yok</string>
+    <plurals name="history_rescued">
+        <item quantity="one">%d kurtardı</item>
+        <item quantity="other">%d kurtardı</item>
+    </plurals>
+
+    <!-- Scanner v2: what a photo can show, and a framing tip. -->
+    <string name="scanner_source_fridge_hint">Raflar ve kapak</string>
+    <string name="scanner_source_pantry_hint">Dolaplar</string>
+    <string name="scanner_source_receipt_hint">Alışverişten sonra</string>
+    <string name="scanner_tip">İpucu: İyi ışık ve her seferinde bir raf en iyi sonucu verir.</string>
+    <string name="edit_preview_placeholder">Yeni ürün</string>
 </resources>

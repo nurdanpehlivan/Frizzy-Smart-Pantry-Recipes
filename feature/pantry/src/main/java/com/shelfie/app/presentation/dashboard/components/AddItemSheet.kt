@@ -1,15 +1,20 @@
 package com.shelfie.app.presentation.dashboard.components
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +35,7 @@ import com.shelfie.app.core.ui.R
 import com.shelfie.app.presentation.common.item.EditItemSheet
 import com.shelfie.app.presentation.dashboard.AddItemState
 import com.shelfie.app.presentation.dashboard.DashboardIntent
+import com.shelfie.app.presentation.theme.extendedColors
 
 /** "Add product": the regular edit form plus a barcode button that pre-fills it. */
 @Composable
@@ -47,19 +53,45 @@ fun AddItemSheet(state: AddItemState, onIntent: (DashboardIntent) -> Unit) {
             onIntent(DashboardIntent.SaveNewItem(name, quantity, unit, category, expiryDate, location))
         },
         headerContent = {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                FilledTonalButton(onClick = scanBarcode, enabled = !state.isLookingUp) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_barcode),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+            // A packaged product fills the whole form from its barcode; no AI quota used.
+            Surface(
+                onClick = scanBarcode,
+                enabled = !state.isLookingUp,
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = BorderStroke(1.dp, MaterialTheme.extendedColors.glassBorder),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_barcode),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.add_item_scan_barcode),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.add_item_scan_barcode))
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                if (state.isLookingUp) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    if (state.isLookingUp) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_chevron_right),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
             state.messageRes?.let { messageRes ->

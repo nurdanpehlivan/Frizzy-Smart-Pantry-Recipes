@@ -1,6 +1,7 @@
 package com.shelfie.app.presentation.mealplan
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,13 +16,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -34,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -42,11 +49,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -62,9 +72,11 @@ import com.shelfie.app.domain.model.MealPlanEntry
 import com.shelfie.app.domain.model.MealType
 import com.shelfie.app.domain.model.SavedRecipe
 import com.shelfie.app.presentation.common.FALLBACK_INGREDIENT_EMOJI
+import com.shelfie.app.presentation.common.HighlightCard
 import com.shelfie.app.presentation.common.ShelfieCard
 import com.shelfie.app.presentation.common.ShelfieTopBar
 import com.shelfie.app.presentation.theme.extendedColors
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -125,6 +137,8 @@ fun MealPlanScreen(
     var editingDay by rememberSaveable { mutableStateOf<Long?>(null) }
     var editingMeal by rememberSaveable { mutableStateOf<MealType?>(null) }
     val editing = editingDay?.let { day -> editingMeal?.let { SlotKey(LocalDate.ofEpochDay(day), it) } }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = { ShelfieTopBar(title = stringResource(R.string.plan_title), onNavigateUp = onNavigateUp) },
@@ -135,6 +149,7 @@ fun MealPlanScreen(
             return@Scaffold
         }
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -142,8 +157,24 @@ fun MealPlanScreen(
             item(key = "week") {
                 WeekSwitcher(weekStart = state.weekStart, onShiftWeek = onShiftWeek)
             }
+            item(key = "strip") {
+                // Tapping a day scrolls to its card: the strip's two items come before the days.
+                DayStrip(
+                    days = state.days,
+                    today = state.today,
+                    onSelect = { index -> scope.launch { listState.animateScrollToItem(index + DAY_ITEMS_OFFSET) } },
+                )
+            }
             item(key = "shopping") {
-                FilledTonalButton(onClick = onAddMissing, enabled = state.plannedCount > 0, modifier = Modifier.fillMaxWidth()) {
+                FilledTonalButton(
+                    onClick = onAddMissing,
+                    enabled = state.plannedCount > 0,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Icon(painterResource(R.drawable.ic_add_shopping), contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.plan_add_missing))
@@ -153,6 +184,7 @@ fun MealPlanScreen(
                 DayCard(
                     day = day,
                     isToday = day.date == state.today,
+                    isPast = day.date.isBefore(state.today),
                     onSlotClick = { meal ->
                         editingDay = day.date.toEpochDay()
                         editingMeal = meal
@@ -199,30 +231,80 @@ private fun WeekSwitcher(weekStart: LocalDate, onShiftWeek: (Long) -> Unit) {
     }
 }
 
+/** The week at a glance: seven days, today filled, a dot under every day with something planned. */
 @Composable
-private fun DayCard(day: DayPlan, isToday: Boolean, onSlotClick: (MealType) -> Unit) {
+private fun DayStrip(days: List<DayPlan>, today: LocalDate, onSelect: (Int) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val locale = Locale.getDefault()
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        days.forEachIndexed { index, day ->
+            val isToday = day.date == today
+            val dayName = day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
+            Surface(
+                onClick = { onSelect(index) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (isToday) scheme.primary else scheme.surfaceContainerLowest,
+                contentColor = if (isToday) scheme.onPrimary else scheme.onSurface,
+                border = if (isToday) null else BorderStroke(1.dp, MaterialTheme.extendedColors.glassBorder),
+                modifier = Modifier
+                    .weight(1f)
+                    .alpha(if (day.date.isBefore(today)) PAST_ALPHA else 1f),
+            ) {
+                Column(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(text = dayName, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    Text(text = day.date.dayOfMonth.toString(), style = MaterialTheme.typography.titleMedium)
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .size(5.dp)
+                            .background(
+                                when {
+                                    day.meals.isEmpty() -> Color.Transparent
+                                    isToday -> scheme.onPrimary
+                                    else -> scheme.primary
+                                },
+                                CircleShape,
+                            ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayCard(day: DayPlan, isToday: Boolean, isPast: Boolean, onSlotClick: (MealType) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val dayName = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
         .replaceFirstChar { it.titlecase(Locale.getDefault()) }
     val dateText = remember(day.date) { day.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) }
-    ShelfieCard(
-        modifier = Modifier.fillMaxWidth(),
-        border = BorderStroke(if (isToday) 1.5.dp else 1.dp, if (isToday) scheme.primary else MaterialTheme.extendedColors.glassBorder),
-    ) {
+    val content: @Composable () -> Unit = {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
             Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = dayName, style = MaterialTheme.typography.titleMedium, color = if (isToday) scheme.primary else scheme.onSurface)
+                Text(text = dayName, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = if (isToday) stringResource(R.string.plan_today) else dateText,
                     style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant,
+                    color = if (isToday) MaterialTheme.extendedColors.onHeroVariant else scheme.onSurfaceVariant,
                 )
             }
             MealType.entries.forEach { meal ->
                 SlotRow(meal = meal, entry = day.meals[meal], onClick = { onSlotClick(meal) })
             }
         }
+    }
+    // Today is the highlight; past days fade, they're only there for reference.
+    if (isToday) {
+        HighlightCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), content = content)
+    } else {
+        ShelfieCard(
+            modifier = Modifier.fillMaxWidth().alpha(if (isPast) PAST_ALPHA else 1f),
+            shape = RoundedCornerShape(26.dp),
+        ) { content() }
     }
 }
 
@@ -233,27 +315,35 @@ private fun SlotRow(meal: MealType, entry: MealPlanEntry?, onClick: () -> Unit) 
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .heightIn(min = 44.dp)
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .heightIn(min = 52.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = stringResource(meal.planLabelRes),
-            style = MaterialTheme.typography.labelLarge,
-            color = scheme.onSurfaceVariant,
-            modifier = Modifier.width(92.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(scheme.surfaceContainerHigh, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = entry?.recipe?.coverEmoji() ?: meal.emoji, style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(meal.planLabelRes),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSurfaceVariant,
+            )
             when {
                 entry == null -> Text(
                     text = "+ " + stringResource(R.string.plan_add),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = scheme.primary,
                 )
                 else -> {
                     entry.recipe?.let { saved ->
                         Text(
-                            text = "${saved.coverEmoji()}  ${saved.recipe.title}",
+                            text = saved.recipe.title,
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -376,6 +466,20 @@ private fun SlotSheet(
 
 private fun SavedRecipe.coverEmoji(): String =
     recipe.rescuedIngredients.firstNotNullOfOrNull { it.emoji } ?: FALLBACK_INGREDIENT_EMOJI
+
+/** Icon of an empty slot; a planned one shows its recipe's ingredient instead. */
+private val MealType.emoji: String
+    get() = when (this) {
+        MealType.BREAKFAST -> "🍳"
+        MealType.LUNCH -> "🥗"
+        MealType.DINNER -> "🍲"
+    }
+
+/** The week switcher and the day strip come before the day cards. */
+private const val DAY_ITEMS_OFFSET = 3
+
+/** Past days stay visible but step back. */
+private const val PAST_ALPHA = 0.6f
 
 private val MealType.planLabelRes: Int
     get() = when (this) {

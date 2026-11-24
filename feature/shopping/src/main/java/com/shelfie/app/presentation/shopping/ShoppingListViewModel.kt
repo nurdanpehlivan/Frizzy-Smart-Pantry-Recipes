@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.shelfie.app.domain.model.Category
 import com.shelfie.app.domain.model.FoodCategories
 import com.shelfie.app.domain.model.ShoppingItem
+import com.shelfie.app.domain.repository.AccountRepository
 import com.shelfie.app.domain.repository.PantryRepository
 import com.shelfie.app.domain.repository.ShoppingListRepository
 import com.shelfie.app.domain.usecase.StockUpFromShoppingUseCase
@@ -31,6 +32,8 @@ data class ShoppingListUiState(
     val bought: List<ShoppingItem> = emptyList(),
     /** Names of products that recently ran out (eaten or thrown away) and aren't listed yet. */
     val suggestions: List<String> = emptyList(),
+    /** The signed-in account; items others in the household added show who added them. */
+    val myEmail: String? = null,
 )
 
 @HiltViewModel
@@ -38,6 +41,7 @@ class ShoppingListViewModel @Inject constructor(
     private val shoppingListRepository: ShoppingListRepository,
     private val stockUp: StockUpFromShoppingUseCase,
     pantryRepository: PantryRepository,
+    accountRepository: AccountRepository,
     clock: Clock,
 ) : ViewModel() {
 
@@ -45,7 +49,8 @@ class ShoppingListViewModel @Inject constructor(
         shoppingListRepository.observeItems(),
         pantryRepository.observeRemovedItemsSince(clock.instant().minus(SUGGESTION_WINDOW)),
         pantryRepository.observePantryItems(),
-    ) { items, removed, inPantry ->
+        accountRepository.account,
+    ) { items, removed, inPantry, account ->
         val (bought, toBuy) = items.partition { it.isChecked }
         // Something still in the pantry under the same name hasn't really run out.
         val known = (toBuy.map { it.name } + inPantry.map { it.name }).map { it.lowercase() }.toSet()
@@ -62,6 +67,7 @@ class ShoppingListViewModel @Inject constructor(
                 .distinctBy { it.lowercase() }
                 .filterNot { it.lowercase() in known }
                 .take(MAX_SUGGESTIONS),
+            myEmail = account?.email,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ShoppingListUiState())
 

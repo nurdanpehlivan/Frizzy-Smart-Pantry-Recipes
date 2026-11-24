@@ -1,6 +1,7 @@
 package com.shelfie.app.presentation.theme
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.shelfie.app.domain.model.FreshnessStatus
 
@@ -18,6 +19,15 @@ val Cream = Color(0xFFFFF9F2)
 val WarmInk = Color(0xFF2A2420)
 val Carrot = Color(0xFFE8692A)
 val Espresso = Color(0xFF15120F)
+
+/**
+ * The scan button's gradient, fixed in both themes: scanning is the brand moment, like a logo.
+ * Used by the dock's raised button and the scanner's camera button.
+ */
+val ScanGradient = Brush.linearGradient(listOf(Color(0xFF4CCB7D), Color(0xFF2BA95C), Color(0xFF1E8A48)))
+
+/** Dark ink on [ScanGradient]: white on mid-green doesn't reach a readable contrast. */
+val OnScanGradient = Color(0xFF04361C)
 
 // endregion
 

@@ -12,13 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -30,9 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -42,19 +37,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shelfie.app.core.ui.R
 import com.shelfie.app.domain.model.FreshnessStatus
+import com.shelfie.app.presentation.common.FreshnessRing
 import com.shelfie.app.presentation.common.ShelfieCard
 import com.shelfie.app.presentation.common.daysLeftText
 import com.shelfie.app.presentation.common.displayEmoji
 import com.shelfie.app.presentation.common.emoji
-import com.shelfie.app.presentation.common.foodEmoji
 import com.shelfie.app.presentation.common.formatQuantity
 import com.shelfie.app.presentation.common.labelRes
 import com.shelfie.app.presentation.dashboard.DashboardItem
 import com.shelfie.app.presentation.theme.freshnessPalette
 
 private val CardShape = RoundedCornerShape(20.dp)
-
-private val EmojiShadow = Shadow(color = Color.Black.copy(alpha = 0.35f), offset = Offset(0f, 6f), blurRadius = 12f)
 
 /** Swipe right → consumed, swipe left → wasted. */
 @Composable
@@ -157,7 +150,7 @@ private data class SwipeVisuals(
 
 /**
  * One pantry item: a calm, flat white card for every group, so the list doesn't shout. Urgency
- * is carried by the coloured "days left" pill and the tinted emoji tile, plus the group header.
+ * is carried by the freshness ring around the emoji and the coloured "days left" text.
  */
 @Composable
 fun PantryItemCard(entry: DashboardItem, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
@@ -180,18 +173,12 @@ fun PantryItemCard(entry: DashboardItem, modifier: Modifier = Modifier, onClick:
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .background(colors.container, RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                // A soft drop shadow lifts the emoji off its tile, like a product photo.
-                Text(
-                    text = item.displayEmoji,
-                    style = MaterialTheme.typography.headlineSmall.copy(shadow = EmojiShadow),
-                )
-            }
+            FreshnessRing(
+                emoji = item.displayEmoji,
+                shelfLifeLeft = entry.shelfLifeLeft,
+                status = entry.status,
+                size = 56.dp,
+            )
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -218,20 +205,14 @@ fun PantryItemCard(entry: DashboardItem, modifier: Modifier = Modifier, onClick:
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Surface(
-                shape = CircleShape,
-                // Critical gets the solid accent so it stands out in a long list.
-                color = if (isCritical) colors.accent else colors.container,
-                contentColor = if (isCritical) MaterialTheme.colorScheme.surfaceContainerLowest else colors.onContainer,
-            ) {
-                Text(
-                    // "≈": no printed date, the expiry is an estimate from the product type.
-                    text = (if (item.isExpiryEstimated) "≈ " else "") + daysLeftText(entry.daysLeft),
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                )
-            }
+            Text(
+                // "≈": no printed date, the expiry is an estimate from the product type.
+                text = (if (item.isExpiryEstimated) "≈ " else "") + daysLeftText(entry.daysLeft),
+                // The ring carries the colour; the text only needs to stay readable on white.
+                style = if (isCritical) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium,
+                color = colors.onContainer,
+                maxLines = 1,
+            )
         }
     }
 }

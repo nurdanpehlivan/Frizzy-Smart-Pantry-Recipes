@@ -28,6 +28,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +49,7 @@ import com.shelfie.app.presentation.common.ShelfieCard
 import com.shelfie.app.presentation.mascot.Frizzy
 import com.shelfie.app.presentation.mascot.FrizzyMood
 import com.shelfie.app.presentation.recipe.CookingProgress
+import com.shelfie.app.presentation.theme.freshnessPalette
 
 /**
  * Focused, one-step-at-a-time view for cooking with messy hands: big text, one big
@@ -134,11 +136,13 @@ private fun StepContent(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.Center,
             ) {
-                // Chef Frizzy keeps you company; the instruction stays the focus below.
-                Frizzy(mood = FrizzyMood.CHEF, size = 120.dp, modifier = Modifier.align(Alignment.CenterHorizontally))
-                Spacer(modifier = Modifier.height(24.dp))
-                StepNumber(number = number)
-                Spacer(modifier = Modifier.height(16.dp))
+                // Chef Frizzy keeps you company beside the number; the instruction gets the room.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StepNumber(number = number)
+                    Spacer(modifier = Modifier.weight(1f))
+                    Frizzy(mood = FrizzyMood.CHEF, size = 76.dp)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = step.instruction,
                     style = MaterialTheme.typography.headlineSmall,
@@ -195,7 +199,18 @@ private fun FinishedContent(
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        if (rescuedCount > 0) {
+            Spacer(modifier = Modifier.height(12.dp))
+            val fresh = MaterialTheme.freshnessPalette.fresh
+            Surface(shape = CircleShape, color = fresh.container, contentColor = fresh.onContainer) {
+                Text(
+                    text = "✓ " + pluralStringResource(R.plurals.history_rescued, rescuedCount, rescuedCount),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = pluralStringResource(R.plurals.recipe_finished_subtitle, rescuedCount, rescuedCount),
             style = MaterialTheme.typography.bodyLarge,

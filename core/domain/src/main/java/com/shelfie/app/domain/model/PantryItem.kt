@@ -30,6 +30,17 @@ data class PantryItem(
 
     fun isExpired(today: LocalDate): Boolean = expiryDate.isBefore(today)
 
+    /**
+     * Share of the shelf life still ahead on [today], 0–1, drawn as the freshness ring: 1 on the
+     * day it was bought, 0 on its last day and after. Counted from [purchaseDate], so freezing or
+     * opening (which move [expiryDate]) grow or shrink the ring as they should.
+     */
+    fun shelfLifeLeft(today: LocalDate): Float {
+        val total = ChronoUnit.DAYS.between(purchaseDate, expiryDate)
+        if (total <= 0) return 0f
+        return (ChronoUnit.DAYS.between(today, expiryDate).toFloat() / total).coerceIn(0f, 1f)
+    }
+
     fun freshnessStatus(
         today: LocalDate,
         thresholds: FreshnessThresholds = FreshnessThresholds.DEFAULT,

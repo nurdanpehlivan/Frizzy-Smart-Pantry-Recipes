@@ -65,7 +65,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `freeze from the item sheet moves the item to the freezer and closes the sheet`() = runTest {
-        val viewModel = DashboardViewModel(pantry, mockk(), shopping, clock = clock, settingsRepository = settings, householdRepository = household)
+        val viewModel = DashboardViewModel(pantry, mockk(), shopping, clock = clock, settingsRepository = settings, householdRepository = household, observeWasteFreeStreak = mockk())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         runCurrent()
 
@@ -88,7 +88,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `undo after freezing puts the item back as it was`() = runTest {
-        val viewModel = DashboardViewModel(pantry, mockk(), shopping, clock = clock, settingsRepository = settings, householdRepository = household)
+        val viewModel = DashboardViewModel(pantry, mockk(), shopping, clock = clock, settingsRepository = settings, householdRepository = household, observeWasteFreeStreak = mockk())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         val effects = mutableListOf<DashboardEffect>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.collect { effects += it } }
@@ -107,7 +107,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `add to list puts the item's name on the shopping list`() = runTest {
-        val viewModel = DashboardViewModel(pantry, mockk(), shopping, clock = clock, settingsRepository = settings, householdRepository = household)
+        val viewModel = DashboardViewModel(pantry, mockk(), shopping, clock = clock, settingsRepository = settings, householdRepository = household, observeWasteFreeStreak = mockk())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         runCurrent()
 

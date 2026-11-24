@@ -15,6 +15,8 @@ data class DashboardItem(
     /** Negative once expired, 0 on the expiry day. */
     val daysLeft: Long,
     val status: FreshnessStatus,
+    /** Share of the shelf life still ahead, 0–1, for the freshness ring. */
+    val shelfLifeLeft: Float = 1f,
 )
 
 data class DashboardUiState(
@@ -136,6 +138,9 @@ sealed interface DashboardIntent {
 
     data object OpenNotifications : DashboardIntent
 
+    /** The streak badge was tapped. */
+    data object OpenStatistics : DashboardIntent
+
     data object OpenAddItem : DashboardIntent
 
     data object DismissAddItem : DashboardIntent
@@ -164,6 +169,8 @@ sealed interface DashboardEffect {
     data object NavigateToSettings : DashboardEffect
 
     data object NavigateToNotifications : DashboardEffect
+
+    data object NavigateToStatistics : DashboardEffect
 
     data class ItemAdded(val itemName: String) : DashboardEffect
 

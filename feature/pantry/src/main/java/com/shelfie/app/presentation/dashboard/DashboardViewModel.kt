@@ -21,8 +21,10 @@ import com.shelfie.app.domain.repository.PantryRepository
 import com.shelfie.app.domain.repository.ProductLookupRepository
 import com.shelfie.app.domain.repository.SettingsRepository
 import com.shelfie.app.domain.repository.ShoppingListRepository
+import com.shelfie.app.domain.usecase.ObserveWasteFreeStreakUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -56,6 +59,7 @@ class DashboardViewModel @Inject constructor(
     settingsRepository: SettingsRepository,
     private val clock: Clock,
     private val householdRepository: HouseholdRepository,
+    observeWasteFreeStreak: ObserveWasteFreeStreakUseCase,
 ) : ViewModel() {
 
     private val selectedFilter = MutableStateFlow<PantryFilter?>(null)
@@ -114,6 +118,15 @@ class DashboardViewModel @Inject constructor(
         initialValue = DashboardUiState(),
     )
 
+    /**
+     * Days in a row without throwing food away (the household's, in a shared pantry); `null`
+     * before the pantry was used. Shown as the flame badge that opens the statistics.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val wasteFreeStreak: StateFlow<Int?> = today
+        .flatMapLatest { observeWasteFreeStreak(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+
     /** What the rest of the household did since the user last looked; a badge on the family button. */
     val unseenActivity: StateFlow<Int> = householdRepository.unseenActivityCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
@@ -161,6 +174,7 @@ class DashboardViewModel @Inject constructor(
             DashboardIntent.OpenRescueRecipe -> sendEffect(DashboardEffect.NavigateToRecipe)
             DashboardIntent.OpenSettings -> sendEffect(DashboardEffect.NavigateToSettings)
             DashboardIntent.OpenNotifications -> sendEffect(DashboardEffect.NavigateToNotifications)
+            DashboardIntent.OpenStatistics -> sendEffect(DashboardEffect.NavigateToStatistics)
             DashboardIntent.OpenAddItem -> _addItem.value = AddItemState(draft = emptyDraft())
             DashboardIntent.DismissAddItem -> dismissAddItem()
             is DashboardIntent.BarcodeScanned -> lookUpBarcode(intent.barcode)
@@ -425,6 +439,7 @@ class DashboardViewModel @Inject constructor(
         item = this,
         daysLeft = ChronoUnit.DAYS.between(today, expiryDate),
         status = freshnessStatus(today, thresholds),
+        shelfLifeLeft = shelfLifeLeft(today),
     )
 
     private data class ListFilters(

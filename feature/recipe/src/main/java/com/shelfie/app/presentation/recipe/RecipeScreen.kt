@@ -23,9 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -62,19 +60,20 @@ import com.shelfie.app.domain.model.RecipeStep
 import com.shelfie.app.presentation.common.BottomActionBar
 import com.shelfie.app.presentation.common.Pill
 import com.shelfie.app.presentation.common.PremiumNudge
+import com.shelfie.app.presentation.common.SectionHeader
 import com.shelfie.app.presentation.common.ShelfieTopBar
 import com.shelfie.app.presentation.common.ShimmerBlock
 import com.shelfie.app.presentation.common.displayEmoji
 import com.shelfie.app.presentation.common.emoji
-import com.shelfie.app.presentation.common.foodEmoji
 import com.shelfie.app.presentation.mascot.Frizzy
 import com.shelfie.app.presentation.mascot.FrizzyMood
 import com.shelfie.app.presentation.mascot.MascotMessage
 import com.shelfie.app.presentation.recipe.components.CookingMode
-import com.shelfie.app.presentation.recipe.components.IngredientGrid
+import com.shelfie.app.presentation.recipe.components.ExtraIngredientChips
 import com.shelfie.app.presentation.recipe.components.IngredientTile
 import com.shelfie.app.presentation.recipe.components.RecipeHeroCard
 import com.shelfie.app.presentation.recipe.components.RecipeLinksCard
+import com.shelfie.app.presentation.recipe.components.RescuedIngredients
 import com.shelfie.app.presentation.recipe.components.SectionTitle
 import com.shelfie.app.presentation.recipe.components.StepOverviewCard
 import com.shelfie.app.presentation.recipe.components.ingredientEmoji
@@ -303,40 +302,34 @@ private fun RecipeOverview(
                     }
                 }
             }
-            item(key = "links") { RecipeLinksCard(title = recipe.title) }
             if (recipe.rescuedIngredients.isNotEmpty()) {
                 item(key = "rescuedTitle") { SectionTitle(stringResource(R.string.recipe_section_rescued)) }
                 item(key = "rescued") {
-                    IngredientGrid(ingredients = recipe.rescuedIngredients, pantryItems = state.ingredients)
+                    RescuedIngredients(ingredients = recipe.rescuedIngredients, pantryItems = state.ingredients)
                 }
             }
             if (recipe.extraIngredients.isNotEmpty()) {
-                item(key = "extrasTitle") { SectionTitle(stringResource(R.string.recipe_section_extras)) }
-                item(key = "extras") {
-                    IngredientGrid(ingredients = recipe.extraIngredients, pantryItems = state.ingredients)
-                }
-                item(key = "addMissing") {
-                    FilledTonalButton(
-                        onClick = onAddMissing,
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                        ),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_add_shopping),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.recipe_action_add_missing))
+                item(key = "extrasTitle") {
+                    // The basics may need buying: one tap puts them on the list, tagged "recipe".
+                    SectionHeader(title = stringResource(R.string.recipe_section_extras)) {
+                        TextButton(onClick = onAddMissing) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add_shopping),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(stringResource(R.string.recipe_action_add_missing), maxLines = 1)
+                        }
                     }
                 }
+                item(key = "extras") { ExtraIngredientChips(ingredients = recipe.extraIngredients) }
             }
             item(key = "stepsTitle") { SectionTitle(stringResource(R.string.recipe_section_steps)) }
             itemsIndexed(recipe.steps, key = { index, _ -> "step_$index" }) { index, step ->
                 StepOverviewCard(number = index + 1, step = step)
             }
+            item(key = "links") { RecipeLinksCard(title = recipe.title) }
         }
         BottomActionBar {
                 OutlinedButton(

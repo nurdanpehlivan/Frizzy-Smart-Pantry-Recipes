@@ -615,4 +615,90 @@
         <item quantity="one">%d nouveauté de ta famille</item>
         <item quantity="other">%d nouveautés de ta famille</item>
     </plurals>
+
+    <!-- Flame badge on the pantry header: days in a row with nothing thrown away. -->
+    <plurals name="streak_badge_description">
+        <item quantity="one">%d jour d\'affilée sans jeter de nourriture. Ouvrir les statistiques</item>
+        <item quantity="other">%d jours d\'affilée sans jeter de nourriture. Ouvrir les statistiques</item>
+    </plurals>
+
+    <!-- Pantry v2: freshness ring, Frizzy hero card and the "use first" cards. -->
+    <string name="freshness_ring_description">Il reste %1$d %% de sa durée de conservation</string>
+    <plurals name="dashboard_hero_critical_title">
+        <item quantity="one">%d produit a besoin de toi</item>
+        <item quantity="other">%d produits ont besoin de toi</item>
+    </plurals>
+    <string name="dashboard_hero_critical_message">Mange-les ou cuisine-les avant qu\'ils se gâtent.</string>
+    <plurals name="dashboard_hero_warning_title">
+        <item quantity="one">%d produit à utiliser cette semaine</item>
+        <item quantity="other">%d produits à utiliser cette semaine</item>
+    </plurals>
+    <string name="dashboard_hero_warning_message">Rien d\'urgent. Je te préviendrai.</string>
+    <string name="dashboard_hero_fresh_title">Tout est frais !</string>
+    <string name="dashboard_hero_fresh_message">Rien ne t\'attend pour l\'instant. Je garde un œil dessus.</string>
+    <string name="dashboard_use_today">À utiliser d\'abord</string>
+    <string name="dashboard_action_eaten_item">Marquer %1$s comme mangé</string>
+    <string name="dashboard_action_cook_item">Cuisiner avec %1$s</string>
+
+    <!-- Shopping v2: floating bar that moves everything bought into the pantry. -->
+    <plurals name="shopping_bought_ready">
+        <item quantity="one">%d acheté, prêt à ranger</item>
+        <item quantity="other">%d achetés, prêts à ranger</item>
+    </plurals>
+    <string name="shopping_tag_recipe">Recette</string>
+    <string name="shopping_added_by">Ajouté par %1$s</string>
+
+    <!-- Family tab v2: the household's shared streak and month. -->
+    <plurals name="household_streak_title">
+        <item quantity="one">%d jour ensemble sans gaspillage</item>
+        <item quantity="other">%d jours ensemble sans gaspillage</item>
+    </plurals>
+    <string name="household_streak_zero">Lancez ensemble une nouvelle série</string>
+    <string name="household_month_summary">Ce mois-ci : %1$d mangés · %2$d jetés</string>
+
+    <!-- Statistics v2: the streak card and the weight / CO₂ tiles. -->
+    <plurals name="stats_streak_unit">
+        <item quantity="one">jour</item>
+        <item quantity="other">jours</item>
+    </plurals>
+    <string name="stats_streak_body">d\'affilée sans jeter de nourriture</string>
+    <plurals name="stats_streak_best">
+        <item quantity="one">Ton record : %d jour</item>
+        <item quantity="other">Ton record : %d jours</item>
+    </plurals>
+    <string name="stats_streak_best_now">Ta meilleure série jusqu\'ici !</string>
+    <string name="stats_day_clean">%1$s : rien jeté</string>
+    <string name="stats_day_wasted">%1$s : quelque chose a été jeté</string>
+    <string name="stats_tile_kg">nourriture sauvée</string>
+    <string name="stats_tile_co2">CO₂ évité</string>
+    <string name="stats_impact_footnote">Le poids et le CO₂ sont des estimations selon le type et la quantité de chaque produit.</string>
+
+    <!-- Recipes tab v2: chef Frizzy's card, quick actions and recipe cards. -->
+    <string name="history_counts">%1$d enregistrées · %2$d cuisinées</string>
+    <plurals name="history_hero_expiring_title">
+        <item quantity="one">%d produit à manger</item>
+        <item quantity="other">%d produits à manger</item>
+    </plurals>
+    <string name="history_hero_expiring_body">Je peux en faire un repas rapide.</string>
+    <string name="history_hero_cta">Voir une recette</string>
+    <string name="history_hero_idle_title">Rien ne va se gâter</string>
+    <string name="history_hero_idle_body">Choisis ce que tu veux dans ton garde-manger, je te trouve une recette.</string>
+    <string name="history_hero_pick">Choisir</string>
+    <string name="history_pick_sub">Choisir les ingrédients</string>
+    <plurals name="history_plan_sub">
+        <item quantity="one">%d repas prévu</item>
+        <item quantity="other">%d repas prévus</item>
+    </plurals>
+    <string name="history_plan_empty">Rien de prévu</string>
+    <plurals name="history_rescued">
+        <item quantity="one">%d sauvé</item>
+        <item quantity="other">%d sauvés</item>
+    </plurals>
+
+    <!-- Scanner v2: what a photo can show, and a framing tip. -->
+    <string name="scanner_source_fridge_hint">Étagères et porte</string>
+    <string name="scanner_source_pantry_hint">Placards</string>
+    <string name="scanner_source_receipt_hint">Après les courses</string>
+    <string name="scanner_tip">Astuce : une bonne lumière et une étagère à la fois donnent les meilleurs résultats.</string>
+    <string name="edit_preview_placeholder">Nouveau produit</string>
 </resources>

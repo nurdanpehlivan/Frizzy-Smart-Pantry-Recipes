@@ -14,10 +14,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +42,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -74,15 +78,19 @@ import com.shelfie.app.domain.model.MeasurementUnit
 import com.shelfie.app.domain.model.PantryItem
 import com.shelfie.app.presentation.common.BottomActionBar
 import com.shelfie.app.presentation.common.DetectedItemPlaceholder
-import com.shelfie.app.presentation.common.Pill
 import com.shelfie.app.presentation.common.PremiumNudge
+import com.shelfie.app.presentation.common.ShelfieCard
 import com.shelfie.app.presentation.common.ShelfieTopBar
+import com.shelfie.app.presentation.common.glow
 import com.shelfie.app.presentation.common.item.EditItemSheet
 import com.shelfie.app.presentation.common.scanLineOverlay
 import com.shelfie.app.presentation.mascot.Frizzy
 import com.shelfie.app.presentation.mascot.FrizzyMood
 import com.shelfie.app.presentation.scanner.components.DetectedItemCard
+import com.shelfie.app.presentation.theme.OnScanGradient
+import com.shelfie.app.presentation.theme.ScanGradient
 import com.shelfie.app.presentation.theme.ShelfieTheme
+import com.shelfie.app.presentation.theme.extendedColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -238,59 +246,115 @@ fun ScannerScreen(
     }
 }
 
+/**
+ * Before the photo: Frizzy asks what to look at, three cards say what a photo can be (receipts
+ * are easy to miss otherwise), then the gradient camera button, the same as the dock's, and the
+ * gallery as the quieter option.
+ */
 @Composable
 private fun IdleContent(onIntent: (ScannerIntent) -> Unit) {
+    val extended = MaterialTheme.extendedColors
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(200.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f), CircleShape),
+                .size(176.dp)
+                .background(extended.hero, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Frizzy(mood = FrizzyMood.HAPPY, size = 160.dp)
+            Frizzy(mood = FrizzyMood.HAPPY, size = 140.dp)
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = stringResource(R.string.scanner_idle_title),
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = stringResource(R.string.scanner_idle_subtitle),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        // What a photo can show: receipts are easy to miss otherwise.
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                "🧊 " + stringResource(R.string.location_fridge),
-                "🗄 " + stringResource(R.string.location_pantry),
-                "🧾 " + stringResource(R.string.scanner_source_receipt),
-            ).forEach { Pill(text = it) }
-        }
-        Spacer(modifier = Modifier.height(28.dp))
-        Button(
-            onClick = { onIntent(ScannerIntent.OpenCamera) },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+        Spacer(modifier = Modifier.height(20.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ButtonIconLabel(R.drawable.ic_photo_camera, R.string.scanner_action_take_photo)
+            SourceCard("🧊", stringResource(R.string.location_fridge), stringResource(R.string.scanner_source_fridge_hint), Modifier.weight(1f).fillMaxHeight())
+            SourceCard("🗄", stringResource(R.string.location_pantry), stringResource(R.string.scanner_source_pantry_hint), Modifier.weight(1f).fillMaxHeight())
+            SourceCard("🧾", stringResource(R.string.scanner_source_receipt), stringResource(R.string.scanner_source_receipt_hint), Modifier.weight(1f).fillMaxHeight())
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+        Surface(
+            onClick = { onIntent(ScannerIntent.OpenCamera) },
+            shape = CircleShape,
+            color = Color.Transparent,
+            contentColor = OnScanGradient,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .glow(extended.glow, CircleShape, radius = 12.dp)
+                .background(ScanGradient, CircleShape),
+        ) {
+            Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Icon(painter = painterResource(R.drawable.ic_photo_camera), contentDescription = null, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(text = stringResource(R.string.scanner_action_take_photo), style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
         OutlinedButton(
             onClick = { onIntent(ScannerIntent.OpenPhotoPicker) },
             modifier = Modifier.fillMaxWidth().height(56.dp),
         ) {
             ButtonIconLabel(R.drawable.ic_photo_library, R.string.scanner_action_pick_photo)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "💡 " + stringResource(R.string.scanner_tip),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** One thing a photo can show, with a hint of how to frame it. */
+@Composable
+private fun SourceCard(emoji: String, title: String, hint: String, modifier: Modifier = Modifier) {
+    ShelfieCard(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(text = emoji, style = MaterialTheme.typography.titleMedium)
+            }
+            Text(text = title, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center, maxLines = 1)
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
