@@ -31,6 +31,17 @@ data class ShoppingItemEntity(
     /** Stable id across devices for sync; the auto-generated [id] is only local. */
     @ColumnInfo(name = COLUMN_SYNC_ID, defaultValue = "''")
     val syncId: String = newSyncId(),
+
+    /**
+     * Email of the household member who added it. Set only from the server (see
+     * `SyncManager`), never pushed: the server knows each record's author itself.
+     */
+    @ColumnInfo(name = COLUMN_ADDED_BY)
+    val addedBy: String? = null,
+
+    /** Missing ingredients of a recipe or the meal plan; synced in the record. */
+    @ColumnInfo(name = COLUMN_FROM_RECIPE, defaultValue = "0")
+    val fromRecipe: Boolean = false,
 ) {
     companion object {
         const val TABLE_NAME = "shopping_items"
@@ -41,5 +52,7 @@ data class ShoppingItemEntity(
         const val COLUMN_IS_CHECKED = "is_checked"
         const val COLUMN_CREATED_AT = "created_at"
         const val COLUMN_SYNC_ID = "sync_id"
+        const val COLUMN_ADDED_BY = "added_by"
+        const val COLUMN_FROM_RECIPE = "from_recipe"
     }
 }

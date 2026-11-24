@@ -26,7 +26,7 @@ class AddMealPlanShoppingUseCaseTest {
     fun `adds the missing ingredients of today's and later recipes, once each`() = runTest {
         val menemen = saved(1, RecipeIngredient("Yumurta", "3", null, isFromPantry = false), RecipeIngredient("Domates", "2", null, isFromPantry = true))
         val soup = saved(2, RecipeIngredient("Mercimek", "1 su bardağı", null, isFromPantry = false))
-        coEvery { shopping.addItems(any()) } returns 1
+        coEvery { shopping.addItems(any(), any()) } returns 1
 
         useCase(
             listOf(
@@ -37,13 +37,13 @@ class AddMealPlanShoppingUseCaseTest {
             today,
         )
 
-        coVerify { shopping.addItems(listOf("Yumurta" to "3")) }
+        coVerify { shopping.addItems(listOf("Yumurta" to "3"), fromRecipe = true) }
     }
 
     @Test
     fun `nothing to add makes no call`() = runTest {
         assertEquals(0, useCase(listOf(MealPlanEntry(today, MealType.LUNCH, null, "Dışarıda")), today))
-        coVerify(exactly = 0) { shopping.addItems(any()) }
+        coVerify(exactly = 0) { shopping.addItems(any(), any()) }
     }
 
     private fun saved(id: Long, vararg ingredients: RecipeIngredient) = SavedRecipe(

@@ -54,6 +54,8 @@ import com.shelfie.app.data.local.entity.SyncOutboxEntity
         AutoMigration(from = 8, to = 9),
         // 9 -> 10: adds the recipe_translations cache (not synced either).
         AutoMigration(from = 9, to = 10),
+        // 10 -> 11: adds shopping_items.added_by and .from_recipe (ADD COLUMN keeps the triggers).
+        AutoMigration(from = 10, to = 11),
     ],
 )
 @TypeConverters(ShelfieTypeConverters::class)
@@ -80,6 +82,6 @@ abstract class ShelfieDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "shelfie.db"
-        const val VERSION = 10
+        const val VERSION = 11
     }
 }

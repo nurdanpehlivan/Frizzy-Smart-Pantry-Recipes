@@ -10,9 +10,10 @@ interface ShoppingListRepository {
 
     /**
      * Adds items by name, skipping names already on the list and not yet bought (case
-     * insensitive). Returns how many were actually added.
+     * insensitive). Returns how many were actually added. [fromRecipe] marks ingredients a
+     * recipe or the meal plan asked for, shown with a "recipe" tag on the list.
      */
-    suspend fun addItems(items: List<Pair<String, String>>): Int
+    suspend fun addItems(items: List<Pair<String, String>>, fromRecipe: Boolean = false): Int
 
     suspend fun setChecked(id: Long, isChecked: Boolean)
 

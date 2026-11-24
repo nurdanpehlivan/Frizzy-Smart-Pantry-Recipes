@@ -188,6 +188,7 @@ class RecipeViewModel @Inject constructor(
         launchSafely {
             val added = shoppingListRepository.addItems(
                 ready.recipe.extraIngredients.map { it.name to it.amount },
+                fromRecipe = true,
             )
             _effects.send(RecipeEffect.AddedToShoppingList(added))
         }

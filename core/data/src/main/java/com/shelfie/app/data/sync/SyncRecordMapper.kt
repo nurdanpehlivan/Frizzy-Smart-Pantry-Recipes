@@ -31,6 +31,7 @@ object SyncRecordMapper {
 
     private const val MAX_NAME_LENGTH = 60
     private const val MAX_AMOUNT_LENGTH = 30
+    private const val MAX_EMAIL_LENGTH = 254
 
     /** One emoji, including skin-tone or ZWJ sequences. */
     private const val MAX_EMOJI_LENGTH = 16
@@ -106,9 +107,16 @@ object SyncRecordMapper {
         put("amount", amount)
         put("isChecked", isChecked)
         put("createdAt", createdAt.toEpochMilli())
+        if (fromRecipe) put("fromRecipe", true)
     }
 
-    fun shoppingFromRecord(syncId: String, data: JsonObject, existing: ShoppingItemEntity?): ShoppingItemEntity? {
+    /** [addedBy] comes with the record from the server (its author), not from [data]. */
+    fun shoppingFromRecord(
+        syncId: String,
+        data: JsonObject,
+        existing: ShoppingItemEntity?,
+        addedBy: String? = null,
+    ): ShoppingItemEntity? {
         val name = data.string("name")?.trim()?.take(MAX_NAME_LENGTH)?.takeIf { it.isNotEmpty() } ?: return null
         return ShoppingItemEntity(
             id = existing?.id ?: 0L,
@@ -117,6 +125,8 @@ object SyncRecordMapper {
             isChecked = data.boolean("isChecked") ?: false,
             createdAt = data.instant("createdAt") ?: existing?.createdAt ?: Instant.EPOCH,
             syncId = syncId,
+            addedBy = addedBy?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_EMAIL_LENGTH),
+            fromRecipe = data.boolean("fromRecipe") ?: false,
         )
     }
 

@@ -24,7 +24,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
             ShoppingItem::name,
         ) { item, name -> item.copy(name = name) }
 
-    override suspend fun addItems(items: List<Pair<String, String>>): Int {
+    override suspend fun addItems(items: List<Pair<String, String>>, fromRecipe: Boolean): Int {
         val existing = dao.getUncheckedNamesLowercase().toMutableSet()
         val now = clock.instant()
         val toInsert = items.mapNotNull { (rawName, rawAmount) ->
@@ -36,6 +36,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
                 amount = rawAmount.trim().take(MAX_AMOUNT_LENGTH),
                 isChecked = false,
                 createdAt = now,
+                fromRecipe = fromRecipe,
             )
         }
         if (toInsert.isEmpty()) return 0
@@ -59,6 +60,8 @@ class ShoppingListRepositoryImpl @Inject constructor(
         amount = amount,
         isChecked = isChecked,
         createdAt = createdAt,
+        addedBy = addedBy,
+        fromRecipe = fromRecipe,
     )
 
     private companion object {

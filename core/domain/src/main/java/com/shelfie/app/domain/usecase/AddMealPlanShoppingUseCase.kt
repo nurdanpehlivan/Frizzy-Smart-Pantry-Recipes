@@ -21,6 +21,6 @@ class AddMealPlanShoppingUseCase @Inject constructor(
             .distinctBy { it.id }
             .flatMap { it.recipe.extraIngredients }
             .map { it.name to it.amount }
-        return if (items.isEmpty()) 0 else shoppingListRepository.addItems(items)
+        return if (items.isEmpty()) 0 else shoppingListRepository.addItems(items, fromRecipe = true)
     }
 }

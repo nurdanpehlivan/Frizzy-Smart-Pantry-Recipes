@@ -176,8 +176,12 @@ class SyncManager @Inject constructor(
                     if (change.deleted || data == null) {
                         syncDao.deleteShoppingItem(change.syncId)
                     } else {
-                        SyncRecordMapper.shoppingFromRecord(change.syncId, data, syncDao.getShoppingItem(change.syncId))
-                            ?.let { syncDao.upsertShoppingItem(it) }
+                        SyncRecordMapper.shoppingFromRecord(
+                            change.syncId,
+                            data,
+                            syncDao.getShoppingItem(change.syncId),
+                            addedBy = change.addedBy,
+                        )?.let { syncDao.upsertShoppingItem(it) }
                     }
                 SyncCollections.MEAL_PLAN ->
                     if (change.deleted || data == null) {

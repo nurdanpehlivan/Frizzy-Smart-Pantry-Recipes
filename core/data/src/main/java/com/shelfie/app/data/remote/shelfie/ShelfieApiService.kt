@@ -179,4 +179,6 @@ data class SyncChangeDto(
     val data: JsonObject? = null,
     val deleted: Boolean = false,
     val changedAt: Long,
+    /** Only from the server, in a household: the email of whoever added the record. */
+    val addedBy: String? = null,
 )
